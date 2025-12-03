@@ -62,11 +62,12 @@ class TestEvents:
         response = client.post(
             "/api/v1/agent/events",
             json={
-                "node_api_key": api_key,
+                "api_key": api_key,
                 "honeypot_id": test_honeypot.id,
                 "event_type": "ssh_login",
-                "source_ip": "1.2.3.4",
-                "details": {"username": "test", "password": "test123"}
+                "src_ip": "1.2.3.4",
+                "src_port": 12345,
+                "payload": {"username": "test", "password": "test123"}
             }
         )
         assert response.status_code == 200
@@ -79,11 +80,12 @@ class TestEvents:
         response = client.post(
             "/api/v1/agent/events",
             json={
-                "node_api_key": "invalid_key",
+                "api_key": "invalid_key",
                 "honeypot_id": 1,
                 "event_type": "ssh_login",
-                "source_ip": "1.2.3.4",
-                "details": {}
+                "src_ip": "1.2.3.4",
+                "src_port": 12345,
+                "payload": {}
             }
         )
         assert response.status_code == 401

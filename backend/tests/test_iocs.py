@@ -34,7 +34,7 @@ class TestIOCs:
         ioc = models.IOC(
             value="1.2.3.4",
             ioc_type="ip",
-            risk_score=75.0,
+            score=75,
             first_seen=datetime.utcnow(),
             last_seen=datetime.utcnow()
         )
@@ -54,7 +54,7 @@ class TestIOCs:
         ioc = models.IOC(
             value="1.2.3.4",
             ioc_type="ip",
-            risk_score=75.0,
+            score=75,
             first_seen=datetime.utcnow(),
             last_seen=datetime.utcnow()
         )

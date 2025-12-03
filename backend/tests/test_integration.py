@@ -36,11 +36,12 @@ class TestIntegration:
         event_response = client.post(
             "/api/v1/agent/events",
             json={
-                "node_api_key": test_node.api_key,
+                "api_key": test_node.api_key,
                 "honeypot_id": honeypot_id,
                 "event_type": "ssh_login",
-                "source_ip": "192.168.1.100",
-                "details": {"username": "attacker", "password": "password123"}
+                "src_ip": "192.168.1.100",
+                "src_port": 54321,
+                "payload": {"username": "attacker", "password": "password123"}
             }
         )
         assert event_response.status_code == 200
@@ -90,11 +91,12 @@ class TestIntegration:
         event_response = client.post(
             "/api/v1/agent/events",
             json={
-                "node_api_key": test_node.api_key,
+                "api_key": test_node.api_key,
                 "honeypot_id": honeypot_id,
                 "event_type": "ssh_command",
-                "source_ip": "10.0.0.1",
-                "details": {"command": "ls -la"}
+                "src_ip": "10.0.0.1",
+                "src_port": 54322,
+                "payload": {"command": "ls -la"}
             }
         )
         assert event_response.status_code == 200
