@@ -77,7 +77,7 @@ def get_cached_dashboard_data(db: Session) -> Dict[str, Any]:
         "honeypots": db.query(models.Honeypot).count(),
         "sessions": db.query(models.Session).filter(models.Session.started_at >= last_24h).count(),
         "iocs": db.query(models.IOC).count(),
-        "alerts": db.query(models.Alert).filter_by(status="unread").count(),
+        "alerts": db.query(models.Alert).filter_by(read=False).count(),
     }
     
     cache_set(cache_key, data, ttl_seconds=30)
@@ -86,6 +86,7 @@ def get_cached_dashboard_data(db: Session) -> Dict[str, Any]:
 
 def create_database_indexes():
     """Create database indexes for performance"""
+    from sqlalchemy import inspect
     indexes = [
         # Event indexes
         Index('idx_event_src_ip', models.Event.src_ip),
@@ -93,21 +94,19 @@ def create_database_indexes():
         Index('idx_event_type', models.Event.event_type),
         Index('idx_event_honeypot_id', models.Event.honeypot_id),
         
-        # IOC indexes
-        Index('idx_ioc_value', models.IOC.value),
+        # IOC indexes (only create if not already exists - model has index=True on value)
         Index('idx_ioc_type', models.IOC.ioc_type),
-        Index('idx_ioc_risk_score', models.IOC.risk_score),
+        Index('idx_ioc_score', models.IOC.score),
         
         # Session indexes
         Index('idx_session_src_ip', models.Session.src_ip),
         Index('idx_session_started_at', models.Session.started_at),
         
         # Alert indexes
-        Index('idx_alert_status', models.Alert.status),
+        Index('idx_alert_read', models.Alert.read),
         Index('idx_alert_severity', models.Alert.severity),
         
-        # Node indexes
-        Index('idx_node_api_key', models.Node.api_key),
+        # Node indexes (only create if not already exists - model has index=True on api_key)
         Index('idx_node_last_heartbeat', models.Node.last_heartbeat_at),
     ]
     return indexes

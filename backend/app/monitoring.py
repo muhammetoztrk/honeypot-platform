@@ -153,11 +153,11 @@ class MetricsCollector:
         
         # IOC metrics
         total_iocs = db.query(models.IOC).count()
-        high_risk_iocs = db.query(models.IOC).filter(models.IOC.risk_score >= 70).count()
+        high_risk_iocs = db.query(models.IOC).filter(models.IOC.score >= 70).count()
         
         # Alert metrics
         total_alerts = db.query(models.Alert).count()
-        unread_alerts = db.query(models.Alert).filter_by(status="unread").count()
+        unread_alerts = db.query(models.Alert).filter_by(read=False).count()
         
         # Honeypot metrics
         total_honeypots = db.query(models.Honeypot).count()

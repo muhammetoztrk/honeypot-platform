@@ -3,10 +3,10 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
+# Use fixture-based client instead of global client
 
 
-def test_register_user():
+def test_register_user(client):
     """Test user registration"""
     response = client.post(
         "/api/v1/auth/register",
@@ -18,7 +18,7 @@ def test_register_user():
     assert response.status_code in [200, 400]  # 400 if user exists
 
 
-def test_login():
+def test_login(client):
     """Test user login"""
     # First register
     client.post(

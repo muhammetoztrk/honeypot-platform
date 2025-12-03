@@ -20,14 +20,28 @@ async def lifespan(app: FastAPI):
     # Startup: Create tables and seed default data
     Base.metadata.create_all(bind=engine)
     
-    # Create database indexes for performance
-    try:
-        from .performance import create_database_indexes
-        indexes = create_database_indexes()
-        # Note: Indexes should be created via migrations in production
-        log_event("info", "Database indexes prepared", indexes_count=len(indexes))
-    except Exception as e:
-        log_event("warning", "Failed to prepare indexes", error=str(e))
+    # Create database indexes for performance (skip in test environment)
+    import os
+    if os.environ.get("SKIP_INDEX_CREATION") == "1" or os.environ.get("DATABASE_URL", "").startswith("sqlite:///:memory:"):
+        # Skip index creation in test environment (indexes are created automatically from models)
+        pass
+    else:
+        try:
+            from .performance import create_database_indexes
+            from sqlalchemy import inspect
+            indexes = create_database_indexes()
+            # Create indexes with checkfirst=True to avoid conflicts
+            inspector = inspect(engine)
+            existing_indexes = {idx['name'] for idx in inspector.get_indexes()}
+            for idx in indexes:
+                if idx.name not in existing_indexes:
+                    try:
+                        idx.create(bind=engine, checkfirst=True)
+                    except Exception:
+                        pass  # Index might already exist
+            log_event("info", "Database indexes prepared", indexes_count=len(indexes))
+        except Exception as e:
+            log_event("warning", "Failed to prepare indexes", error=str(e))
     
     db = next(get_db())
     try:

@@ -75,7 +75,6 @@ def _upsert_ioc(db: Session, ioc_type: str, value: str, base_score: int):
         evaluate_alert_rules(ioc=ioc, db=db)
         # Execute playbooks
         from .playbook_engine import execute_playbook
-        from . import models
         playbooks = db.query(models.Playbook).filter_by(enabled=True).all()
         for playbook in playbooks:
             execute_playbook(playbook, ioc=ioc, db=db)

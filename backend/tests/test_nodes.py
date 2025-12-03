@@ -4,13 +4,11 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app import models
 
-client = TestClient(app)
-
 
 class TestNodes:
     """Test node management"""
     
-    def test_list_nodes_unauthorized(self):
+    def test_list_nodes_unauthorized(self, client):
         """Test listing nodes without authentication"""
         response = client.get("/api/v1/nodes")
         assert response.status_code == 401

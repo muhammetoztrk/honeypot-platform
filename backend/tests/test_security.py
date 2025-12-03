@@ -3,13 +3,11 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
-
 
 class TestSecurity:
     """Test security features"""
     
-    def test_authentication_required(self):
+    def test_authentication_required(self, client):
         """Test that protected endpoints require authentication"""
         protected_endpoints = [
             "/api/v1/nodes",
@@ -23,7 +21,7 @@ class TestSecurity:
             response = client.get(endpoint)
             assert response.status_code == 401, f"{endpoint} should require authentication"
     
-    def test_invalid_token(self):
+    def test_invalid_token(self, client):
         """Test request with invalid token"""
         response = client.get(
             "/api/v1/nodes",
@@ -31,7 +29,7 @@ class TestSecurity:
         )
         assert response.status_code == 401
     
-    def test_expired_token(self, authenticated_client):
+    def test_expired_token(self, client):
         """Test request with expired token"""
         # Note: This would require mocking time or using a real expired token
         # For now, we just test that invalid tokens are rejected
@@ -88,13 +86,13 @@ class TestSecurity:
         # In test environment, rate limiting might not be enabled
         assert all(status in [200, 429] for status in responses)
     
-    def test_cors_headers(self):
+    def test_cors_headers(self, client):
         """Test CORS headers"""
         response = client.options("/api/v1/nodes")
         # CORS headers should be present
         assert response.status_code in [200, 405]  # OPTIONS might return 405
     
-    def test_security_headers(self):
+    def test_security_headers(self, client):
         """Test security headers"""
         response = client.get("/health")
         headers = response.headers

@@ -6,8 +6,6 @@ from app.database import SessionLocal
 from app import models
 from app.setup import SetupWizard
 
-client = TestClient(app)
-
 
 class TestSetupWizard:
     """Test setup wizard functionality"""
@@ -95,20 +93,20 @@ class TestSetupWizard:
         assert user is not None
         assert user.role == "admin"
     
-    def test_setup_api_check_endpoint(self):
+    def test_setup_api_check_endpoint(self, client):
         """Test setup check API endpoint"""
         response = client.get("/api/v1/setup/check")
         assert response.status_code == 200
         assert "setup_complete" in response.json()
     
-    def test_setup_api_database_info(self):
+    def test_setup_api_database_info(self, client):
         """Test setup database info API endpoint"""
         response = client.get("/api/v1/setup/database/info")
         assert response.status_code == 200
         data = response.json()
         assert "status" in data
     
-    def test_setup_api_database_test(self):
+    def test_setup_api_database_test(self, client):
         """Test setup database test API endpoint"""
         response = client.get("/api/v1/setup/database/test")
         assert response.status_code == 200

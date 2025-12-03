@@ -11,7 +11,7 @@ client = TestClient(app)
 class TestAlerts:
     """Test alert system"""
     
-    def test_list_alerts_unauthorized(self):
+    def test_list_alerts_unauthorized(self, client):
         """Test listing alerts without authentication"""
         response = client.get("/api/v1/alerts")
         assert response.status_code == 401

@@ -1,14 +1,24 @@
 """Test configuration and fixtures"""
 import pytest
+import os
+import sys
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.main import app
+# Set test environment variables BEFORE importing app modules
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["JWT_SECRET"] = "test-secret-key-for-testing-only"
+os.environ["SKIP_INDEX_CREATION"] = "1"  # Skip index creation in tests
+
+# Now import app modules
 from app.database import Base, get_db
 from app import models
 from app.auth import hash_password
+
+# Import app after setting environment
+from app.main import app
 
 
 # In-memory SQLite database for testing
@@ -25,12 +35,45 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="function")
 def db():
     """Create a fresh database for each test"""
+    # Drop all tables and indexes first to ensure clean state
+    try:
+        with engine.connect() as conn:
+            # Drop all indexes manually for SQLite
+            result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"))
+            index_names = [row[0] for row in result]
+            for idx_name in index_names:
+                try:
+                    conn.execute(text(f"DROP INDEX IF EXISTS {idx_name}"))
+                except:
+                    pass
+            conn.commit()
+    except:
+        pass
+    
+    # Drop all tables
+    Base.metadata.drop_all(bind=engine)
+    
+    # Create all tables fresh (indexes from models will be created automatically)
     Base.metadata.create_all(bind=engine)
+    
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
+        # Clean up after test
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"))
+                index_names = [row[0] for row in result]
+                for idx_name in index_names:
+                    try:
+                        conn.execute(text(f"DROP INDEX IF EXISTS {idx_name}"))
+                    except:
+                        pass
+                conn.commit()
+        except:
+            pass
         Base.metadata.drop_all(bind=engine)
 
 
@@ -43,9 +86,13 @@ def client(db):
         finally:
             pass
     
+    # Override database dependency
     app.dependency_overrides[get_db] = override_get_db
+    
     with TestClient(app) as test_client:
         yield test_client
+    
+    # Cleanup
     app.dependency_overrides.clear()
 
 
@@ -91,7 +138,7 @@ def test_node(db, admin_user):
     import secrets
     node = models.Node(
         name="Test Node",
-        api_key=secrets.token_urlsafe(32)
+        api_key=secrets.token_urlsafe(24)  # Reduced from 32 to 24
     )
     db.add(node)
     db.commit()
@@ -128,4 +175,3 @@ def test_honeypot(db, test_node, test_template):
     db.commit()
     db.refresh(honeypot)
     return honeypot
-

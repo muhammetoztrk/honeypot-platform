@@ -72,23 +72,36 @@ class SetupWizard:
     def get_database_info(db: Session) -> dict:
         """Get database information"""
         try:
-            # Get database version
-            result = db.execute(text("SELECT version()"))
-            version = result.scalar()
-            
-            # Get table count
-            result = db.execute(text("""
-                SELECT COUNT(*) 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            """))
-            table_count = result.scalar()
-            
-            return {
-                "status": "success",
-                "version": version.split(',')[0] if version else "Unknown",
-                "table_count": table_count,
-            }
+            # Check if SQLite or PostgreSQL
+            db_url = str(db.bind.url)
+            if 'sqlite' in db_url.lower():
+                # SQLite
+                result = db.execute(text("SELECT sqlite_version()"))
+                version = result.scalar()
+                result = db.execute(text("""
+                    SELECT COUNT(*) FROM sqlite_master WHERE type='table'
+                """))
+                table_count = result.scalar()
+                return {
+                    "status": "success",
+                    "version": f"SQLite {version}" if version else "SQLite Unknown",
+                    "table_count": table_count,
+                }
+            else:
+                # PostgreSQL
+                result = db.execute(text("SELECT version()"))
+                version = result.scalar()
+                result = db.execute(text("""
+                    SELECT COUNT(*) 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                """))
+                table_count = result.scalar()
+                return {
+                    "status": "success",
+                    "version": version.split(',')[0] if version else "Unknown",
+                    "table_count": table_count,
+                }
         except Exception as e:
             return {
                 "status": "error",

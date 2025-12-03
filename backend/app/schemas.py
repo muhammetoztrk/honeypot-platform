@@ -117,7 +117,9 @@ class AgentEventSubmit(BaseModel):
   honeypot_id: int
   src_ip: str
   src_port: int
+  protocol: str = "tcp"
   event_type: str
+  timestamp: Optional[datetime] = None
   payload: dict
 
 

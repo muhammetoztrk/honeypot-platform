@@ -29,6 +29,15 @@ def list_nodes(db: Session = Depends(get_db), _: models.User = Depends(auth.get_
     return db.query(models.Node).all()
 
 
+@router.get("/nodes/{node_id}", response_model=schemas.NodeRead)
+def get_node(node_id: int, db: Session = Depends(get_db), _: models.User = Depends(auth.get_current_user)):
+    from fastapi import HTTPException, status
+    node = db.query(models.Node).filter_by(id=node_id).first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    return node
+
+
 @router.get("/templates", response_model=list[schemas.HoneypotTemplateRead])
 def list_templates(db: Session = Depends(get_db), _: models.User = Depends(auth.get_current_user)):
     return db.query(models.HoneypotTemplate).all()
@@ -202,6 +211,15 @@ def list_iocs(
     return q.order_by(models.IOC.score.desc(), models.IOC.last_seen.desc()).limit(limit).all()
 
 
+@router.get("/iocs/{ioc_id}", response_model=schemas.IOCRead)
+def get_ioc(ioc_id: int, db: Session = Depends(get_db), _: models.User = Depends(auth.get_current_user)):
+    from fastapi import HTTPException, status
+    ioc = db.query(models.IOC).filter_by(id=ioc_id).first()
+    if not ioc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="IOC not found")
+    return ioc
+
+
 @router.post("/agent/heartbeat")
 def agent_heartbeat(heartbeat: schemas.AgentHeartbeat, db: Session = Depends(get_db)):
     node = db.query(models.Node).filter_by(api_key=heartbeat.api_key).first()
@@ -216,6 +234,9 @@ def agent_heartbeat(heartbeat: schemas.AgentHeartbeat, db: Session = Depends(get
 
 @router.post("/agent/event")
 def agent_submit_event(event: schemas.AgentEventSubmit, db: Session = Depends(get_db)):
+    from datetime import datetime
+    # Import models locally to avoid UnboundLocalError
+    from . import models
     node = db.query(models.Node).filter_by(api_key=event.api_key).first()
     if not node:
         from fastapi import HTTPException, status
@@ -232,28 +253,51 @@ def agent_submit_event(event: schemas.AgentEventSubmit, db: Session = Depends(ge
         .first()
     )
     if not session:
-        from datetime import datetime
+        # Use protocol and timestamp from event if provided
+        protocol = getattr(event, 'protocol', 'tcp')
+        timestamp = getattr(event, 'timestamp', None)
+        if timestamp:
+            if isinstance(timestamp, str):
+                try:
+                    started_at = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                except:
+                    started_at = datetime.utcnow()
+            else:
+                started_at = timestamp
+        else:
+            started_at = datetime.utcnow()
         session = models.Session(
             honeypot_id=event.honeypot_id,
             src_ip=event.src_ip,
             src_port=event.src_port,
-            protocol="tcp",
-            started_at=datetime.utcnow(),
+            protocol=protocol,
+            started_at=started_at,
         )
         db.add(session)
         db.commit()
         db.refresh(session)
 
     # Create event
-    from datetime import datetime
+    # Use timestamp from event if provided
+    timestamp = getattr(event, 'timestamp', None)
+    if timestamp:
+        if isinstance(timestamp, str):
+            try:
+                event_ts = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            except:
+                event_ts = datetime.utcnow()
+        else:
+            event_ts = timestamp
+    else:
+        event_ts = datetime.utcnow()
     evt = models.Event(
         session_id=session.id,
         honeypot_id=event.honeypot_id,
         src_ip=event.src_ip,
-        dst_port=event.payload.get("port", 0),
+        dst_port=event.src_port,  # Use src_port as dst_port for honeypot
         event_type=event.event_type,
         payload=event.payload,
-        ts=datetime.utcnow(),
+        ts=event_ts,
     )
     db.add(evt)
 

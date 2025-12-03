@@ -5,13 +5,11 @@ from app.main import app
 from app import models
 from datetime import datetime
 
-client = TestClient(app)
-
 
 class TestIntegration:
     """Integration tests for complete workflows"""
     
-    def test_complete_workflow(self, authenticated_client, db, test_node, test_template):
+    def test_complete_workflow(self, client, authenticated_client, db, test_node, test_template):
         """Test complete workflow: create honeypot -> start -> create event -> check IOC"""
         # 1. Create honeypot
         honeypot_response = authenticated_client.post(
@@ -33,14 +31,17 @@ class TestIntegration:
         assert start_response.status_code in [200, 500]
         
         # 3. Submit event via agent API
+        from datetime import datetime
         event_response = client.post(
-            "/api/v1/agent/events",
+            "/api/v1/agent/event",
             json={
                 "api_key": test_node.api_key,
                 "honeypot_id": honeypot_id,
                 "event_type": "ssh_login",
                 "src_ip": "192.168.1.100",
                 "src_port": 54321,
+                "protocol": "tcp",
+                "timestamp": datetime.utcnow().isoformat(),
                 "payload": {"username": "attacker", "password": "password123"}
             }
         )
@@ -65,7 +66,7 @@ class TestIntegration:
         alerts = alerts_response.json()
         # Alert might be created if risk is high
     
-    def test_node_to_honeypot_to_event_chain(self, authenticated_client, test_node, test_template):
+    def test_node_to_honeypot_to_event_chain(self, client, authenticated_client, test_node, test_template):
         """Test node -> honeypot -> event chain"""
         # Create honeypot
         honeypot_response = authenticated_client.post(
@@ -88,14 +89,17 @@ class TestIntegration:
         assert honeypot_data["node_id"] == test_node.id
         
         # Submit event
+        from datetime import datetime
         event_response = client.post(
-            "/api/v1/agent/events",
+            "/api/v1/agent/event",
             json={
                 "api_key": test_node.api_key,
                 "honeypot_id": honeypot_id,
                 "event_type": "ssh_command",
                 "src_ip": "10.0.0.1",
                 "src_port": 54322,
+                "protocol": "tcp",
+                "timestamp": datetime.utcnow().isoformat(),
                 "payload": {"command": "ls -la"}
             }
         )
