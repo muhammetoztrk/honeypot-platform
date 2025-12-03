@@ -78,11 +78,6 @@ docker-compose up -d
    - Create your first node and honeypot
    - Start monitoring threats!
 
-## 📖 Documentation
-
-- **[GitHub Setup Guide](GITHUB_SETUP.md)** - How to set up and deploy on GitHub
-- **[LinkedIn Promotion Guide](LINKEDIN_PROMOTION.md)** - Marketing and promotion tips
-
 ## 🏗️ Architecture
 
 ### Backend
