@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: honeypot-postgres
+    environment:
+      POSTGRES_USER: honeypot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-honeypot123}  # Set via .env file in production
+      POSTGRES_DB: honeypot_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U honeypot -d honeypot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: honeypot-backend
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://honeypot:${POSTGRES_PASSWORD:-honeypot123}@postgres:5432/honeypot_db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-prod}  # Set via .env file in production
+      - BACKUP_DIR=/backups
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+      - "2222:2222"  # SSH honeypot port
+      - "8080:8080"  # Web honeypot port
+      - "3306:3306"  # Database honeypot port
+      - "8001-8099:8001-8099"  # Dynamic honeypot ports
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - backups:/backups
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: honeypot-frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
+  backups:
+
